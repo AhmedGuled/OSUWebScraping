@@ -11,55 +11,56 @@ results = []
 
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email'] # if email is N/A handle dotnum
+    email = row['Email']  # if email is N/A handle dotnum
     dot_num = email.split('.')[-2].split('@')[0] if type(email) is not float else 1
-    # float object has no attribute split???? why is email a flaot
-    if type(email) is float: 
+    # float object has no attribute split???? why is email a float
+    if type(email) is float:
         print('found float', name)
-    if pd.isna(name):  
+    if pd.isna(name):
         continue
-  
+
     name_parts = name.split(',')
-    #if len(name_parts) < 2:
-    #    continue  
-    
+    # if len(name_parts) < 2:
+    #     continue
+
     firstname = name_parts[-1].lower()
     lastname = name_parts[0].lower()
     lastname = lastname[:-1] if lastname[-1] == ',' else name_parts[0].lower()
 
     if ' ' in lastname:
         lastname = lastname.replace(' ', '')
-    
+
     if '\'' in lastname:
         lastname = lastname.replace('\'', '')
-   
+
     url = f"https://engineering.osu.edu/people/{lastname}.{dot_num}"
-    
-    #print(f"Processing: {url}")  
-    
+
+    # print(f"Processing: {url}")
+
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # look for the div. just printing technology everywhere because its in the code. look for a bio
-            text_content = soup.get_text().lower()
-            
-            matched_keywords = [kw for kw in keywords if kw in text_content]
-            if matched_keywords:
-                #print('found a buzzword')
-                results.append({
-                    "Name": name,
-                    "Profile URL": url,
-                    "Keywords Found": ", ".join(matched_keywords)
-                })
+            # Look for the specific div
+            specific_div = soup.find('div', class_='coe-person content-body field-body')
+            if specific_div:
+                text_content = specific_div.get_text().lower()
+                matched_keywords = [kw for kw in keywords if kw in text_content]
+                if matched_keywords:
+                    results.append({
+                        "Name": name,
+                        "Profile URL": url,
+                        "Keywords Found": ", ".join(matched_keywords)
+                    })
+            else:
+                print(f"Specific div not found for {url}")
         else:
-            print(f"URL not found: {url}", lastname) # whats difffernce bewrtwwn 56 and 58
+            print(f"URL not found: {url}", lastname)  # what's difference between 56 and 58
             # verify they actually are gone
     except Exception as e:
-        # print(f"Error with {url}: {e}") # assume they are gone
+        print(f"Error with {url}: {e}")  # assume they are gone
 
-
-     if index % 50 == 0:
+    if index % 50 == 0:
         print(f"Processed {index} entries...")
 
 output_df = pd.DataFrame(results)
