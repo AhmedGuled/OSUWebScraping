@@ -18,7 +18,7 @@ else:
     print(f"Found {len(people_rows)} people rows")
 
     for person in people_rows:
-        name_tag = person.find('a', class_='views-field-field-first-name')
+        name_tag = person.find('span', class_='people-name')
         title_tag = person.find('div', class_='views-field-field-your-title')
         email_tag = person.find('a', href=lambda href: href and "mailto:" in href)
 
