@@ -1,42 +1,87 @@
 import requests
+import os
 from bs4 import BeautifulSoup
-import csv
+import pandas as pd
 
-base_url = "https://aaas.osu.edu/people"
+keywords = [
+    "technology", "computing", "AI", "data science", "machine learning", "software", "programming",
+    "artificial intelligence", "big data", "cloud computing", "cybersecurity", "IoT", "blockchain",
+    "quantum computing", "robotics", "computer vision", "natural language processing", "augmented reality",
+    "virtual reality", "high-performance computing", "data mining", "predictive analytics", "data visualization",
+    "statistical modeling", "deep learning", "neural networks", "reinforcement learning", "pattern recognition",
+    "software engineering", "web development", "mobile applications", "DevOps", "open source", "API development", 
+    "embedded systems", "operating systems", "autonomous systems", "control systems", "signal processing", 
+    "networking", "5G", "bioinformatics", "computational biology", "digital health", "transportation systems",
+    "Python", "R", "TensorFlow", "PyTorch", "Hadoop", "Spark", "SQL", "NoSQL", "Git", "Docker", "Kubernetes"
+]
 
-response = requests.get(base_url)
+file_path = './directories/AAAS_directory.csv'
+professors_data = pd.read_csv(file_path)
 
-if response.status_code != 200:
-    print(f"Stopping: received status code {response.status_code}")
+results = []
+
+for index, row in professors_data.iterrows():
+    name = row['Name']
+    email = row['Email']  # if email is N/A handle dotnum
+
+    # Skip if email is missing or invalid
+    if pd.isna(email) or type(email) is not str:
+        print(f"Skipping {name}: Invalid email")
+        continue
+
+    # Extract lastname and dotnum from email
+    try:
+        # Split email into parts
+        email_parts = email.split('@')[0].split('.')
+        lastname = email_parts[0]  # Lastname is before the first dot
+        dot_num = email_parts[1]  # Dotnum is after the first dot
+    except IndexError:
+        print(f"Skipping {name}: Email format is invalid")
+        continue
+
+    # Construct URL using lastname and dotnum
+    url = f"https://aaas.osu.edu/people/{lastname}.{dot_num}"
+
+    # Debugging: Print the URL being processed
+    print(f"Processing: {url}")
+
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # Look for the specific div
+            specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
+            if specific_div:
+                text_content = specific_div.get_text().lower()
+                matched_keywords = [kw for kw in keywords if kw in text_content]
+                if matched_keywords:
+                    results.append({
+                        "Name": name,
+                        "Profile URL": url,
+                        "Keywords Found": ", ".join(matched_keywords)
+                    })
+            else:
+                print(f"Specific div not found for {url}")
+        else:
+            print(f"URL not found: {url}", lastname)
+    except Exception as e:
+        print(f"Error with {url}: {e}")
+
+    if index % 50 == 0:
+        print(f"Processed {index} entries...")
+
+# Convert results to a DataFrame
+output_df = pd.DataFrame(results)
+
+# Check if the file already exists
+file_exists = os.path.isfile("./Directories/Tech_Interested_Professors_AAAS.csv")
+
+# Append results to the CSV file
+if file_exists:
+    # If the file exists, append without writing the header
+    output_df.to_csv("./Directories/Tech_Interested_Professors_AAAS.csv", mode='a', header=False, index=False)
 else:
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # If the file doesn't exist, create it with headers
+    output_df.to_csv("./Directories/Tech_Interested_Professors_AAAS.csv", index=False)
 
-    people = []
-
-    people_rows = soup.find_all('div', class_='views-field-fieldset')
-
-    print(f"Found {len(people_rows)} people rows")
-
-    for person in people_rows:
-        name_tag = person.find('span', class_='people-name')
-        title_tag = person.find('div', class_='views-field-field-your-title')
-        email_tag = person.find('a', href=lambda href: href and "mailto:" in href)
-
-        name = name_tag.text.strip() if name_tag else "No name found"
-        title = title_tag.text.strip() if title_tag else "No title found"
-        email = email_tag['href'].replace('mailto:', '').strip() if email_tag else "No email found"
-
-        print(f"Name: {name}, Title: {title}, Email: {email}")
-
-        if "Professor" in title or "Lecturer" in title:
-            people.append([name, title, email])
-
-    if people:
-        with open('AAAS_directory.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['Name', 'Title', 'Email'])
-            writer.writerows(people)
-
-        print("Data has been written to professors.csv")
-    else:
-        print("No people matching the criteria were found.")
+print("Script complete. Results appended to Tech_Interested_Professors_AAAS.csv.")
