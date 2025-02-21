@@ -1,5 +1,3 @@
-# this file isn't working, issue with the email collection
-
 import requests
 import os
 from bs4 import BeautifulSoup
@@ -23,34 +21,36 @@ results = []
 
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email']  # if email is N/A handle dotnum
-    dot_num = email.split('.')[-2].split('@')[0] if type(email) is not float else 1 # issue here @Jared needs to debug
-    # float object has no attribute split???? why is email a float
-    if type(email) is float:
-        print('found float', name)
+    raw_email = row['Email']  # This is just a name, not an actual email
+    dot_num = "1"  # Default dot number if unknown
+
     if pd.isna(name):
         continue
 
-    name_parts = name.split(',')
-    # if len(name_parts) < 2:
-    #     continue
+    name_parts = name.split()
+    if len(name_parts) < 2:
+        print(f"Skipping entry with no last name: {name}")
+        continue
 
-    firstname = name_parts[-1].strip().lower()  # Clean up first name
-    lastname = name_parts[0].strip().lower()  # Clean up last name
+    first_name = name_parts[0].strip().lower()
+    last_name = name_parts[-1].strip().lower()
 
-    # Remove spaces and special characters from last name
-    lastname = lastname.replace(' ', '').replace('\'', '')
+    # Handle special characters in last names
+    last_name = last_name.replace(" ", "").replace("'", "").replace("-", "")
 
-    # Construct URL using only lastname and dot_num
-    url = f"https://accad.osu.edu/people/{lastname}.{dot_num}"
+    # Generate OSU email format (lastname.#@osu.edu)
+    if "." in raw_email:
+        dot_num = raw_email.split(".")[-1]  # Extract number if present
+    else:
+        dot_num = "1"  # Assume default dot number
 
-    # print(f"Processing: {url}")
+    # Construct correct profile URL
+    url = f"https://accad.osu.edu/people/{last_name}.{dot_num}"
 
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Look for the specific div
             specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
             if specific_div:
                 text_content = specific_div.get_text().lower()
@@ -64,26 +64,21 @@ for index, row in professors_data.iterrows():
             else:
                 print(f"Specific div not found for {url}")
         else:
-            print(f"URL not found: {url}", lastname)  # what's difference between 56 and 58
-            # verify they actually are gone
+            print(f"URL not found: {url}")
     except Exception as e:
-        print(f"Error with {url}: {e}")  # assume they are gone
+        print(f"Error with {url}: {e}")
 
     if index % 50 == 0:
         print(f"Processed {index} entries...")
 
-# Convert results to a DataFrame
+# Save results to CSV
 output_df = pd.DataFrame(results)
 
-# Check if the file already exists
 file_exists = os.path.isfile("./TechDirectories/Tech_Interested_Professors_ACCAD.csv")
 
-# Append results to the CSV file
 if file_exists:
-    # If the file exists, append without writing the header
     output_df.to_csv("./TechDirectories/Tech_Interested_Professors_ACCAD.csv", mode='a', header=False, index=False)
 else:
-    # If the file doesn't exist, create it with headers
     output_df.to_csv("./TechDirectories/Tech_Interested_Professors_ACCAD.csv", index=False)
 
 print("Script complete. Results appended to Tech_Interested_Professors_ACCAD.csv.")
