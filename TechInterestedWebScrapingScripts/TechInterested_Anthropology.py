@@ -21,7 +21,7 @@ results = []
 
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email']  # if email is N/A handle dotnum
+    email = row['Email']  # If email is N/A, handle dotnum
 
     # Skip if email is missing or invalid
     if pd.isna(email) or type(email) is not str:
@@ -30,10 +30,9 @@ for index, row in professors_data.iterrows():
 
     # Extract lastname and dotnum from email
     try:
-        # Split email into parts
         email_parts = email.split('@')[0].split('.')
         lastname = email_parts[0]  # Lastname is before the first dot
-        dot_num = email_parts[1]  # Dotnum is after the first dot
+        dot_num = email_parts[1]   # Dotnum is after the first dot
     except IndexError:
         print(f"Skipping {name}: Email format is invalid")
         continue
@@ -48,7 +47,6 @@ for index, row in professors_data.iterrows():
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Look for the specific div
             specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
             if specific_div:
                 text_content = specific_div.get_text().lower()
@@ -62,7 +60,7 @@ for index, row in professors_data.iterrows():
             else:
                 print(f"Specific div not found for {url}")
         else:
-            print(f"URL not found: {url}", lastname)
+            print(f"URL not found: {url}")
     except Exception as e:
         print(f"Error with {url}: {e}")
 
@@ -72,15 +70,7 @@ for index, row in professors_data.iterrows():
 # Convert results to a DataFrame
 output_df = pd.DataFrame(results)
 
-# Check if the file already exists
-file_exists = os.path.isfile("./TechDirectories/Tech_Interested_Professors_anthropology.csv")
+# Overwrite the CSV file instead of appending
+output_df.to_csv("./TechDirectories/Tech_Interested_Professors_anthropology.csv", mode='w', index=False)
 
-# Append results to the CSV file
-if file_exists:
-    # If the file exists, append without writing the header
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_anthropology.csv", mode='a', header=False, index=False)
-else:
-    # If the file doesn't exist, create it with headers
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_anthropology.csv", index=False)
-
-print("Script complete. Results appended to Tech_Interested_Professors_anthropology.csv.")
+print("Script complete. Results saved to Tech_Interested_Professors_anthropology.csv.")

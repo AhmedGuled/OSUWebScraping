@@ -15,40 +15,43 @@ keywords = [
 ]
 
 file_path = './directories/Linguistics_directory.csv'
+
+# Ensure the file exists before reading
+if not os.path.exists(file_path):
+    print(f"Error: File {file_path} not found.")
+    exit()
+
 professors_data = pd.read_csv(file_path)
 
 results = []
 
 for index, row in professors_data.iterrows():
-    name = row['Name']
-    email = row['Email']  # if email is N/A handle dotnum
+    name = row.get('Name', 'Unknown')
+    email = row.get('Email', '')
 
     # Skip if email is missing or invalid
-    if pd.isna(email) or type(email) is not str:
+    if pd.isna(email) or not isinstance(email, str):
         print(f"Skipping {name}: Invalid email")
         continue
 
     # Extract lastname and dotnum from email
     try:
-        # Split email into parts
         email_parts = email.split('@')[0].split('.')
-        lastname = email_parts[0]  # Lastname is before the first dot
-        dot_num = email_parts[1]  # Dotnum is after the first dot
+        lastname = email_parts[0]
+        dot_num = email_parts[1]
     except IndexError:
         print(f"Skipping {name}: Email format is invalid")
         continue
 
-    # Construct URL using lastname and dotnum
-    url = f"https://linguistics.osu.edu/people/{lastname}.{dot_num}"  # Fixed URL construction
+    # Construct profile URL
+    url = f"https://linguistics.osu.edu/people/{lastname}.{dot_num}"
 
-    # Debugging: Print the URL being processed
     print(f"Processing: {url}")
 
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Look for the specific div
             specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
             if specific_div:
                 text_content = specific_div.get_text().lower()
@@ -62,25 +65,18 @@ for index, row in professors_data.iterrows():
             else:
                 print(f"Specific div not found for {url}")
         else:
-            print(f"URL not found: {url}", lastname)
+            print(f"URL not found: {url}")
     except Exception as e:
         print(f"Error with {url}: {e}")
 
     if index % 50 == 0:
         print(f"Processed {index} entries...")
 
-# Convert results to a DataFrame
+# Convert results to DataFrame
 output_df = pd.DataFrame(results)
 
-# Check if the file already exists
-file_exists = os.path.isfile("./TechDirectories/Tech_Interested_Professors_linguistics.csv")
+# Overwrite the CSV file instead of appending
+output_file = "./TechDirectories/Tech_Interested_Professors_linguistics.csv"
+output_df.to_csv(output_file, mode='w', header=True, index=False)
 
-# Append results to the CSV file
-if file_exists:
-    # If the file exists, append without writing the header
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_linguistics.csv", mode='a', header=False, index=False)
-else:
-    # If the file doesn't exist, create it with headers
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_linguistics.csv", index=False)
-
-print("Script complete. Results appended to Tech_Interested_Professors_linguistics.csv.")
+print(f"Script complete. Results written to {output_file}.")

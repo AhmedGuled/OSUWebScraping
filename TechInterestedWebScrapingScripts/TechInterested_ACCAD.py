@@ -71,14 +71,9 @@ for index, row in professors_data.iterrows():
     if index % 50 == 0:
         print(f"Processed {index} entries...")
 
-# Save results to CSV
+# Save results to CSV (overwrite instead of append)
 output_df = pd.DataFrame(results)
 
-file_exists = os.path.isfile("./TechDirectories/Tech_Interested_Professors_ACCAD.csv")
+output_df.to_csv("./TechDirectories/Tech_Interested_Professors_ACCAD.csv", mode='w', index=False)
 
-if file_exists:
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_ACCAD.csv", mode='a', header=False, index=False)
-else:
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_ACCAD.csv", index=False)
-
-print("Script complete. Results appended to Tech_Interested_Professors_ACCAD.csv.")
+print("Script complete. Results saved to Tech_Interested_Professors_ACCAD.csv.")

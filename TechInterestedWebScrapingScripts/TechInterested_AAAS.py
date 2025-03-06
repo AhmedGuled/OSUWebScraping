@@ -21,28 +21,30 @@ results = []
 
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email']  # if email is N/A handle dotnum
-    dot_num = email.split('.')[-2].split('@')[0] if type(email) is not float else 1
-    # float object has no attribute split???? why is email a float
-    if type(email) is float:
-        print('found float', name)
-    if pd.isna(name):
+    email = row['Email']  # Extract email for dot_num
+
+    # Skip if email is missing or invalid
+    if pd.isna(email) or type(email) is not str:
+        print(f"Skipping {name}: Invalid email")
         continue
 
-    name_parts = name.split(',')
-    # if len(name_parts) < 2:
-    #     continue
+    # Extract lastname and dot_num from email
+    try:
+        email_parts = email.split('@')[0].split('.')
+        if len(email_parts) < 2:
+            print(f"Skipping {name}: Invalid email format")
+            continue
+        lastname = email_parts[0]  # Last name before the first dot
+        dot_num = email_parts[1]  # Dot number after the first dot
+    except IndexError:
+        print(f"Skipping {name}: Email format is invalid")
+        continue
 
-    firstname = name_parts[-1].strip().lower()  # Clean up first name
-    lastname = name_parts[0].strip().lower()  # Clean up last name
-
-    # Remove spaces and special characters from last name
-    lastname = lastname.replace(' ', '').replace('\'', '')
-
-    # Construct URL using only lastname and dot_num
+    # Construct URL using lastname and dot_num
     url = f"https://aaas.osu.edu/people/{lastname}.{dot_num}"
 
-    # print(f"Processing: {url}")
+    # Debugging: Print the URL being processed
+    print(f"Processing: {url}")
 
     try:
         response = requests.get(url, timeout=5)
@@ -62,10 +64,9 @@ for index, row in professors_data.iterrows():
             else:
                 print(f"Specific div not found for {url}")
         else:
-            print(f"URL not found: {url}", lastname)  # what's difference between 56 and 58
-            # verify they actually are gone
+            print(f"URL not found: {url}")
     except Exception as e:
-        print(f"Error with {url}: {e}")  # assume they are gone
+        print(f"Error with {url}: {e}")
 
     if index % 50 == 0:
         print(f"Processed {index} entries...")
@@ -73,15 +74,7 @@ for index, row in professors_data.iterrows():
 # Convert results to a DataFrame
 output_df = pd.DataFrame(results)
 
-# Check if the file already exists
-file_exists = os.path.isfile("./Directories/Tech_Interested_Professors_AAAS.csv")
+# Overwrite the existing file with new results
+output_df.to_csv("./Directories/Tech_Interested_Professors_AAAS.csv", index=False, mode='w')
 
-# Append results to the CSV file
-if file_exists:
-    # If the file exists, append without writing the header
-    output_df.to_csv("./Directories/Tech_Interested_Professors_AAAS.csv", mode='a', header=False, index=False)
-else:
-    # If the file doesn't exist, create it with headers
-    output_df.to_csv("./Directories/Tech_Interested_Professors_AAAS.csv", index=False)
-
-print("Script complete. Results appended to Tech_Interested_Professors_AAAS.csv.")
+print("Script complete. Results written to Tech_Interested_Professors_AAAS.csv.")

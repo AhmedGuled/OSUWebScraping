@@ -21,25 +21,31 @@ results = []
 
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email']  # if email is N/A handle dotnum
+    email = row['Email']
 
     # Skip if email is missing or invalid
-    if pd.isna(email) or type(email) is not str:
+    if pd.isna(email) or not isinstance(email, str):
         print(f"Skipping {name}: Invalid email")
         continue
 
     # Extract lastname and dotnum from email
     try:
-        # Split email into parts
         email_parts = email.split('@')[0].split('.')
-        lastname = email_parts[0]  # Lastname is before the first dot
-        dot_num = email_parts[1]  # Dotnum is after the first dot
+        if len(email_parts) < 2:
+            print(f"Skipping {name}: Invalid email format")
+            continue
+        lastname = email_parts[0]  # Lastname before the first dot
+        dot_num = email_parts[1]   # Dotnum is after the first dot
+
+        # Format last name to remove spaces or apostrophes that could break URLs
+        lastname = lastname.replace(" ", "").replace("'", "")
+
     except IndexError:
         print(f"Skipping {name}: Email format is invalid")
         continue
 
-    # Construct URL using lastname and dotnum
-    url = f"https://english.osu.edu/people/{lastname}.{dot_num}"  # Fixed URL construction
+    # Construct proper profile URL
+    url = f"https://english.osu.edu/people/{lastname}.{dot_num}"
 
     # Debugging: Print the URL being processed
     print(f"Processing: {url}")
@@ -48,7 +54,6 @@ for index, row in professors_data.iterrows():
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Look for the specific div
             specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
             if specific_div:
                 text_content = specific_div.get_text().lower()
@@ -62,7 +67,7 @@ for index, row in professors_data.iterrows():
             else:
                 print(f"Specific div not found for {url}")
         else:
-            print(f"URL not found: {url}", lastname)
+            print(f"URL not found: {url}")
     except Exception as e:
         print(f"Error with {url}: {e}")
 
@@ -72,15 +77,7 @@ for index, row in professors_data.iterrows():
 # Convert results to a DataFrame
 output_df = pd.DataFrame(results)
 
-# Check if the file already exists
-file_exists = os.path.isfile("./TechDirectories/Tech_Interested_Professors_english.csv")
+# Overwrite the existing file with new results
+output_df.to_csv("./TechDirectories/Tech_Interested_Professors_english.csv", index=False, mode='w')
 
-# Append results to the CSV file
-if file_exists:
-    # If the file exists, append without writing the header
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_english.csv", mode='a', header=False, index=False)
-else:
-    # If the file doesn't exist, create it with headers
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_english.csv", index=False)
-
-print("Script complete. Results appended to Tech_Interested_Professors_english.csv.")
+print("Script complete. Results written to Tech_Interested_Professors_english.csv.")

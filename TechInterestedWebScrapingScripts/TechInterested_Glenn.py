@@ -25,7 +25,7 @@ for index, row in professors_data.iterrows():
     name = row['Name']
     email = row['Email']
 
-    if pd.isna(email) or type(email) is not str:
+    if pd.isna(email) or not isinstance(email, str):
         print(f"Skipping {name}: Invalid email")
         continue
 
@@ -37,7 +37,7 @@ for index, row in professors_data.iterrows():
             first_name, last_name = name, ""
 
         profile_name = f"{first_name} {last_name}".strip().lower().replace(" ", "-")
-        url = f"https://glenn.osu.edu/{profile_name}"
+        url = f"https://glenn.osu.edu/people/{profile_name}"  # Fixed URL structure
     except Exception:
         print(f"Skipping {name}: Error constructing URL")
         continue
@@ -70,14 +70,11 @@ for index, row in professors_data.iterrows():
 # Convert to DataFrame
 output_df = pd.DataFrame(results)
 
-# Save results
+# Ensure directory exists
 os.makedirs("TechDirectories", exist_ok=True)
 output_file = "./TechDirectories/Tech_Interested_Professors_Glenn.csv"
-file_exists = os.path.isfile(output_file)
 
-if file_exists:
-    output_df.to_csv(output_file, mode='a', header=False, index=False)
-else:
-    output_df.to_csv(output_file, index=False)
+# Overwrite the existing file instead of appending
+output_df.to_csv(output_file, index=False, mode='w')
 
-print("Script complete. Results saved to Tech_Interested_Professors_Glenn.csv.")
+print("Script complete. Results written to Tech_Interested_Professors_Glenn.csv.")

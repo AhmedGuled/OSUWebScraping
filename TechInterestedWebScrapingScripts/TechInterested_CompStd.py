@@ -1,8 +1,8 @@
 import requests
-import os
-from bs4 import BeautifulSoup
 import pandas as pd
+from bs4 import BeautifulSoup
 
+# Define keywords to search for
 keywords = [
     "technology", "computing", "AI", "data science", "machine learning", "software", "programming",
     "artificial intelligence", "big data", "cloud computing", "cybersecurity", "IoT", "blockchain",
@@ -14,41 +14,33 @@ keywords = [
     "networking", "5G", "bioinformatics", "computational biology", "digital health", "data"
 ]
 
+# File path to input CSV
 file_path = './directories/comparativestudies_directory.csv'
 professors_data = pd.read_csv(file_path)
 
 results = []
+base_url = "https://comparativestudies.osu.edu"
 
+# Iterate through each professor entry
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email']  # if email is N/A handle dotnum
+    relative_url = row['Email']  # This column contains the relative URL, not email
 
-    # Skip if email is missing or invalid
-    if pd.isna(email) or type(email) is not str:
-        print(f"Skipping {name}: Invalid email")
+    # Ensure relative URL is valid
+    if pd.isna(relative_url) or not isinstance(relative_url, str) or not relative_url.startswith('/people/'):
+        print(f"Skipping {name}: Invalid profile URL")
         continue
 
-    # Extract lastname and dotnum from email
-    try:
-        # Split email into parts
-        email_parts = email.split('@')[0].split('.')
-        lastname = email_parts[0]  # Lastname is before the first dot
-        dot_num = email_parts[1]  # Dotnum is after the first dot
-    except IndexError:
-        print(f"Skipping {name}: Email format is invalid")
-        continue
-
-    # Construct URL using lastname and dotnum
-    url = f"https://comparativestudies.osu.edu{lastname}.{dot_num}"
+    # Construct the full URL
+    full_url = f"{base_url}{relative_url}"
 
     # Debugging: Print the URL being processed
-    print(f"Processing: {url}")
+    print(f"Processing: {full_url}")
 
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(full_url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Look for the specific div
             specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
             if specific_div:
                 text_content = specific_div.get_text().lower()
@@ -56,31 +48,24 @@ for index, row in professors_data.iterrows():
                 if matched_keywords:
                     results.append({
                         "Name": name,
-                        "Profile URL": url,
+                        "Profile URL": full_url,
                         "Keywords Found": ", ".join(matched_keywords)
                     })
             else:
-                print(f"Specific div not found for {url}")
+                print(f"Specific div not found for {full_url}")
         else:
-            print(f"URL not found: {url}", lastname)
+            print(f"URL not found: {full_url}")
     except Exception as e:
-        print(f"Error with {url}: {e}")
+        print(f"Error with {full_url}: {e}")
 
-    if index % 50 == 0:
+    if index % 5 == 0:  # Print progress more frequently
         print(f"Processed {index} entries...")
 
 # Convert results to a DataFrame
 output_df = pd.DataFrame(results)
 
-# Check if the file already exists
-file_exists = os.path.isfile("./TechDirectories/Tech_Interested_Professors_compstd.csv")
+# Save results to CSV
+output_file_path = "./TechDirectories/Tech_Interested_Professors_compstd.csv"
+output_df.to_csv(output_file_path, index=False, mode='w')
 
-# Append results to the CSV file
-if file_exists:
-    # If the file exists, append without writing the header
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_compstd.csv", mode='a', header=False, index=False)
-else:
-    # If the file doesn't exist, create it with headers
-    output_df.to_csv("./TechDirectories/Tech_Interested_Professors_compstd.csv", index=False)
-
-print("Script complete. Results appended to Tech_Interested_Professors_compstd.csv.")
+print(f"Script complete. Results written to {output_file_path}.")
