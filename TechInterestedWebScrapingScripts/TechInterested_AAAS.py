@@ -21,26 +21,26 @@ results = []
 
 for index, row in professors_data.iterrows():
     name = row['Name']
-    email = row['Email']  # Extract email for dot_num
+    email = row['Email']
 
     # Skip if email is missing or invalid
-    if pd.isna(email) or type(email) is not str:
+    if pd.isna(email) or not isinstance(email, str):
         print(f"Skipping {name}: Invalid email")
         continue
 
-    # Extract lastname and dot_num from email
+    # Extract lastname and dotnum from email
     try:
         email_parts = email.split('@')[0].split('.')
         if len(email_parts) < 2:
             print(f"Skipping {name}: Invalid email format")
             continue
-        lastname = email_parts[0]  # Last name before the first dot
-        dot_num = email_parts[1]  # Dot number after the first dot
+        lastname = email_parts[0]  # Lastname before the first dot
+        dot_num = email_parts[1]   # Dotnum is after the first dot
     except IndexError:
         print(f"Skipping {name}: Email format is invalid")
         continue
 
-    # Construct URL using lastname and dot_num
+    # Construct proper profile URL
     url = f"https://aaas.osu.edu/people/{lastname}.{dot_num}"
 
     # Debugging: Print the URL being processed
@@ -50,7 +50,6 @@ for index, row in professors_data.iterrows():
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Look for the specific div
             specific_div = soup.find('div', class_="col-xs-12 col-sm-9 bio-btm-left")
             if specific_div:
                 text_content = specific_div.get_text().lower()
@@ -75,6 +74,6 @@ for index, row in professors_data.iterrows():
 output_df = pd.DataFrame(results)
 
 # Overwrite the existing file with new results
-output_df.to_csv("./Directories/Tech_Interested_Professors_AAAS.csv", index=False, mode='w')
+output_df.to_csv("./TechDirectories/Tech_Interested_Professors_AAAS.csv", index=False, mode='w')
 
 print("Script complete. Results written to Tech_Interested_Professors_AAAS.csv.")
