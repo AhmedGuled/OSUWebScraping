@@ -3,16 +3,16 @@ from bs4 import BeautifulSoup
 import csv
 import os
 
-# URL and directory setup
-url = "https://polisci.osu.edu/people"
+# Set up the URL and output directory
+url = "https://eeob.osu.edu/people"
 output_dir = "Directories"
-csv_filename = os.path.join(output_dir, "PoliticalScience_directory.csv")
+csv_filename = os.path.join(output_dir, "EEOB_directory.csv")
 
-# Fetch the webpage content
+# Fetch the HTML content
 response = requests.get(url)
 soup = BeautifulSoup(response.text, 'html.parser')
 
-# Locate all person entries on the page
+# Find all person entries on the page
 people_rows = soup.find_all("div", class_="people-row")
 
 people_data = []
@@ -21,7 +21,7 @@ for person in people_rows:
     # Extract name
     name_tag = person.find("span", class_="people-name")
     name = name_tag.get_text(strip=True) if name_tag else "No name found"
-
+    
     # Extract title
     title_tag = person.find("div", class_="views-field-field-your-title")
     title = title_tag.get_text(strip=True) if title_tag else "No title found"
@@ -45,7 +45,7 @@ if not os.path.exists(output_dir):
 # Write data to CSV
 with open(csv_filename, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(["Name", "Title", "Email"])  # CSV header
+    writer.writerow(["Name", "Title", "Email"])
     writer.writerows(people_data)
 
 print(f"Found {len(people_data)} people matching the criteria.")

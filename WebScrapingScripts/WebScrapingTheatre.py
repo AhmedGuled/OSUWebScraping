@@ -1,49 +1,61 @@
 import requests
 from bs4 import BeautifulSoup
 import csv
+import os
 
-# URL for the Theatre department
-url_theatre = "https://theatreandfilm.osu.edu/people"
-response_theatre = requests.get(url_theatre)
+# URL and directory setup
+url = "https://theatreandfilm.osu.edu/people"
+output_dir = "Directories"
+csv_filename = os.path.join(output_dir, "Theatre_directory.csv")
 
-# Check if request was successful
-if response_theatre.status_code != 200:
-    print(f"Error: Unable to access {url_theatre}. Status Code: {response_theatre.status_code}")
+# Fetch the webpage content
+try:
+    response = requests.get(url)
+    response.raise_for_status()  # Check for request errors
+    soup = BeautifulSoup(response.text, 'html.parser')
+except requests.exceptions.RequestException as e:
+    print(f"Error fetching the page: {e}")
     exit()
 
-soup_theatre = BeautifulSoup(response_theatre.text, 'html.parser')
+# Locate all person entries on the page
+people_rows = soup.find_all('fieldset', class_='inner-people-grid')
 
-# CSV file setup for Theatre
-filename_theatre = "Theatre_directory.csv"
-fields_theatre = ["Name", "Title", "Email"]
-rows_theatre = []
+people_data = []
 
-# Find all person entries on the page
-people_entries_theatre = soup_theatre.find_all('fieldset', class_='inner-people-grid')
+for person in people_rows:
+    try:
+        # Extract name
+        name_tag = person.find('a', class_='views-field-field-first-name')
+        name = name_tag.get_text(strip=True) if name_tag else "No name found"
 
-for person in people_entries_theatre:
-    # Extract the name
-    name_tag = person.find('a', class_='views-field-field-first-name')
-    name = name_tag.get_text(strip=True) if name_tag else "N/A"
-    
-    # Extract the title
-    title_tag = person.find('div', class_='views-field-field-your-title')
-    title = title_tag.get_text(strip=True) if title_tag else "N/A"
-    
-    # Extract the email
-    email_tag = person.find('a', href=lambda href: href and "mailto:" in href)
-    email = email_tag['href'].replace("mailto:", "") if email_tag else "N/A"
-    
-    # Only add professors and lecturers
-    if "professor" in title.lower() or "lecturer" in title.lower():
-        rows_theatre.append([name, title, email])
+        # Extract title
+        title_tag = person.find('div', class_='views-field-field-your-title')
+        title = title_tag.get_text(strip=True) if title_tag else "No title found"
 
-# Write to CSV
+        # Extract email
+        email_tag = person.find("a", href=lambda href: href and "mailto:" in href)
+        email = email_tag['href'].replace("mailto:", "").strip() if email_tag else "No email found"
+
+        # Filter only professors and lecturers
+        if "lecturer" in title.lower() or "professor" in title.lower():
+            people_data.append([name, title, email])
+
+    except Exception as e:
+        print(f"Error processing a person: {e}")
+
+# Ensure the directory exists
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# Write data to CSV
 try:
-    with open(filename_theatre, 'w', newline='', encoding='utf-8') as csvfile_theatre:
-        csvwriter_theatre = csv.writer(csvfile_theatre)
-        csvwriter_theatre.writerow(fields_theatre)
-        csvwriter_theatre.writerows(rows_theatre)
-    print(f"Data has been written to {filename_theatre}")
+    with open(csv_filename, mode='w', newline='', encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Name", "Title", "Email"])  # CSV header
+        writer.writerows(people_data)
+
+    print(f"Found {len(people_data)} people matching the criteria.")
+    print(f"Data has been written to {csv_filename}")
+
 except Exception as e:
     print(f"Error writing to CSV: {e}")

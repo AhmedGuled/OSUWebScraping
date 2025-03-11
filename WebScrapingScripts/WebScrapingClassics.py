@@ -1,40 +1,48 @@
 import requests
 from bs4 import BeautifulSoup
 import csv
+import os
 
+# Set up the URL and output directory
 url = 'https://classics.osu.edu/people'
+output_dir = "Directories"
+csv_filename = os.path.join(output_dir, "Classics_directory.csv")
+
+# Fetch the HTML content
 response = requests.get(url)
 soup = BeautifulSoup(response.text, 'html.parser')
 
+# Find all person entries on the page
 people = soup.find_all('div', class_='views-field-fieldset')
 
-filtered_people = []
+# Ensure the directory exists
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
-for person in people:
-    name_tag = person.find('a', class_='views-field-field-first-name')
-    title_tag = person.find('div', class_='views-field-field-your-title')
-
-    if name_tag and title_tag:
-        name = name_tag.text.strip()
-        title = title_tag.text.strip()
-
-        if 'lecturer' in title.lower() or 'professor' in title.lower():
-            email_tag = person.find('a', href=lambda href: href and 'mailto:' in href)
-            if email_tag:
-                email = email_tag['href'].replace('mailto:', '').strip()
-            else:
-                email_tag = person.find('a', href=True)
-                if email_tag and '@' in email_tag.text:
-                    email = email_tag.text.strip()
-                else:
-                    email = 'No email found'
-
-            filtered_people.append([name, title, email])
-
-csv_file = 'Classics_directory.csv'
-with open(csv_file, mode='w', newline='') as file:
+# Open the CSV file to write data
+with open(csv_filename, mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(['Name', 'Title', 'Email'])
-    writer.writerows(filtered_people)
+    writer.writerow(["Name", "Title", "Email"])  # CSV header
 
-print(f"Data has been written to {csv_file}")
+    for person in people:
+        # Extract title and filter for 'lecturer' or 'professor'
+        title_tag = person.find("div", class_="views-field-field-your-title")
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+            if "lecturer" in title.lower() or "professor" in title.lower():
+                # Extract name
+                name_tag = person.find("span", class_="people-name")
+                name = name_tag.get_text(strip=True) if name_tag else "No name found"
+                
+                # Extract email
+                email_tag = person.find("div", class_="views-field-mail")
+                if email_tag:
+                    email_link = email_tag.find("a", href=True)
+                    email = email_link['href'].replace('mailto:', '').strip() if email_link else "No email found"
+                else:
+                    email = "No email found"
+                
+                # Write data to CSV
+                writer.writerow([name, title, email])
+
+print(f"Data has been written to {csv_filename}")
