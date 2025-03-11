@@ -18,14 +18,14 @@ except requests.exceptions.RequestException as e:
     exit()
 
 # Locate all person entries on the page
-people_rows = soup.find_all('fieldset', class_='inner-people-grid')
+people_rows = soup.find_all('div', class_='people-row')
 
 people_data = []
 
 for person in people_rows:
     try:
         # Extract name
-        name_tag = person.find('a', class_='views-field-field-first-name')
+        name_tag = person.find('a')
         name = name_tag.get_text(strip=True) if name_tag else "No name found"
 
         # Extract title
