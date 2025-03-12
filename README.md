@@ -15,7 +15,8 @@ OSUWebScraping is a project by Ahmed Guled and Jared Alonzo as part of their Res
 
 ```bash
 OSUWebScraping/
-│── TechDirectories/                # CSV files of faculty interested in computing (by department)
+│── Directories/                # CSV files of faculty interested in computing (by department)
+│── TechDirectories/             # CSV all faculty in a department
 │── TechInterestedWebScrapingScripts/ # Python scripts for scraping faculty with computing interests
 │── WebScrapingScripts/             # General web scraping scripts for faculty directories
 │── <CSV files>                      # Raw faculty directory data from various departments
