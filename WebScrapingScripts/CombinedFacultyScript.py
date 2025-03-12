@@ -33,7 +33,7 @@ for file in csv_files:
 combined_df = pd.concat(dataframes, ignore_index=True)
 
 # Define the output file path
-output_file = "/Users/jaredalonzo/Documents/OSUWebScraping/combined_faculty.csv"
+output_file = "/Users/jaredalonzo/Documents/OSUWebScraping/Directories/combined_faculty.csv"
 
 # Save the combined CSV file
 combined_df.to_csv(output_file, index=False)
