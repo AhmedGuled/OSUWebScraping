@@ -3,7 +3,6 @@ import os
 from bs4 import BeautifulSoup
 import pandas as pd
 
-# Define tech-related keywords
 keywords = [
     "technology", "computing", "AI", "data science", "machine learning", "software", "programming",
     "artificial intelligence", "big data", "cloud computing", "cybersecurity", "IoT", "blockchain",
@@ -15,18 +14,28 @@ keywords = [
     "networking", "5G", "bioinformatics", "computational biology", "digital health", "data"
 ]
 
-# Input CSV file with faculty names and emails
-file_path = './directories/Glenn_directory.csv'
-professors_data = pd.read_csv(file_path)
+file_path = '../Directories/Glenn_directory.csv'
+
+if not os.path.exists(file_path):
+    print(f"Error: File not found at {file_path}")
+    exit()
+
+try:
+    professors_data = pd.read_csv(file_path)
+except pd.errors.EmptyDataError:
+    print("Error: The CSV file is empty.")
+    exit()
+except Exception as e:
+    print(f"Error reading CSV file: {e}")
+    exit()
 
 results = []
 
 for index, row in professors_data.iterrows():
-    name = row['Name']
-    email = row['Email']
+    name = row.get('Name', '').strip()
+    email = row.get('Email', '').strip()
 
-    if pd.isna(email) or not isinstance(email, str):
-        print(f"Skipping {name}: Invalid email")
+    if not name or not email:
         continue
 
     try:
@@ -37,19 +46,14 @@ for index, row in professors_data.iterrows():
             first_name, last_name = name, ""
 
         profile_name = f"{first_name} {last_name}".strip().lower().replace(" ", "-")
-        url = f"https://glenn.osu.edu/people/{profile_name}"  # Fixed URL structure
+        url = f"https://glenn.osu.edu/{profile_name}"
     except Exception:
-        print(f"Skipping {name}: Error constructing URL")
         continue
-
-    print(f"Processing: {url}")
 
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-
-            # Extract all text from the page
             page_text = soup.get_text().lower()
             matched_keywords = [kw for kw in keywords if kw in page_text]
 
@@ -57,24 +61,21 @@ for index, row in professors_data.iterrows():
                 results.append({
                     "Name": name,
                     "Profile URL": url,
-                    "Keywords Found": ", ".join(matched_keywords)
+                    "Keywords Found": ", ".join(set(matched_keywords))
                 })
-        else:
-            print(f"URL not found: {url}")
-    except Exception as e:
-        print(f"Error with {url}: {e}")
+    except requests.RequestException as e:
+        print(f"Error fetching {url}: {e}")
+        continue
 
     if index % 50 == 0:
         print(f"Processed {index} entries...")
 
-# Convert to DataFrame
 output_df = pd.DataFrame(results)
 
-# Ensure directory exists
-os.makedirs("TechDirectories", exist_ok=True)
-output_file = "./TechDirectories/Tech_Interested_Professors_Glenn.csv"
+output_dir = "../TechDirectories"
+os.makedirs(output_dir, exist_ok=True)
+output_file = f"{output_dir}/Tech_Interested_Professors_Glenn.csv"
 
-# Overwrite the existing file instead of appending
-output_df.to_csv(output_file, index=False, mode='w')
+output_df.to_csv(output_file, index=False)
 
-print("Script complete. Results written to Tech_Interested_Professors_Glenn.csv.")
+print(f"Script complete. Results saved to {output_file}.")
