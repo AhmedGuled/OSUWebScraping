@@ -14,7 +14,7 @@ keywords = [
     "networking", "5G", "bioinformatics", "computational biology", "digital health", "data"
 ]
 
-file_path = './directories/Fisher_directory.csv'
+file_path = '../Directories/Fisher_directory.csv'
 professors_data = pd.read_csv(file_path)
 
 results = []
@@ -23,61 +23,51 @@ for index, row in professors_data.iterrows():
     name = row['Name']
     email = row['Email']
 
-    # Skip if email is missing or invalid
     if pd.isna(email) or not isinstance(email, str):
         print(f"Skipping {name}: Invalid email")
         continue
 
-    # Extract lastname and dotnum from email
     try:
         email_parts = email.split('@')[0].split('.')
         if len(email_parts) < 2:
             print(f"Skipping {name}: Invalid email format")
             continue
-        lastname = email_parts[0]  # Lastname before the first dot
-        dot_num = email_parts[1]   # Dotnum is after the first dot
 
-        # Format last name to remove spaces or apostrophes that could break URLs
-        lastname = lastname.replace(" ", "").replace("'", "")
-
+        lastname = email_parts[0].replace(" ", "").replace("'", "")
+        dot_num = email_parts[1]
     except IndexError:
         print(f"Skipping {name}: Email format is invalid")
         continue
 
-    # Construct proper profile URL
     url = f"https://fisher.osu.edu/people/{lastname}.{dot_num}"
-
-    # Debugging: Print the URL being processed
-    print(f"Processing: {url}")
+    print(f"Checking: {name} | {url}")
 
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            specific_div = soup.find('div', class_="bux-container")  # Updated div class
-            if specific_div:
-                text_content = specific_div.get_text().lower()
-                matched_keywords = [kw for kw in keywords if kw in text_content]
-                if matched_keywords:
-                    results.append({
-                        "Name": name,
-                        "Profile URL": url,
-                        "Keywords Found": ", ".join(matched_keywords)
-                    })
+            full_text = soup.get_text(separator=' ', strip=True).lower()
+
+            matched_keywords = [kw for kw in keywords if kw.lower() in full_text]
+
+            if matched_keywords:
+                print(f"MATCH for {name}: {matched_keywords}")
+                results.append({
+                    "Name": name,
+                    "Profile URL": url,
+                    "Keywords Found": ", ".join(matched_keywords)
+                })
             else:
-                print(f"Specific div not found for {url}")
+                print(f"No match for {name}")
         else:
-            print(f"URL not found: {url}")
+            print(f"Failed to load {url} (status: {response.status_code})")
     except Exception as e:
         print(f"Error with {url}: {e}")
 
-    if index % 50 == 0:
+    if index % 10 == 0:
         print(f"Processed {index} entries...")
 
-# Convert results to a DataFrame
 output_df = pd.DataFrame(results)
+output_df.to_csv("../TechDirectories/Tech_Interested_Professors_fisher.csv", index=False, mode='w')
 
-# Overwrite the existing file with new results
-output_df.to_csv("./TechDirectories/Tech_Interested_Professors_fisher.csv", index=False, mode='w')
-
-print("Script complete. Results written to Tech_Interested_Professors_fisher.csv.")
+print("Script complete. Filtered results saved.")
